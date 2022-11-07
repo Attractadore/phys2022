@@ -43,28 +43,28 @@ number_options = {
     "separate-uncertainty-units": "single",
 }
 
-cite_key = "enwiki:1114639486"
+cite_key = "WebElements"
 with open("wiki.bib", "w") as f:
     f.write(r"""
   @misc{ """ + cite_key + """,
-    author = "{Wikipedia contributors}",
-    title = "Xenon --- {Wikipedia}{,} The Free Encyclopedia",
+    author = "Mark Winter",
+    title = "WebElements: THE periodic table on the WWW",
     year = "2022",
-    howpublished = "\\url{https://en.wikipedia.org/w/index.php?title=Xenon&oldid=1114639486}",
-    note = "[Online; accessed 31-October-2022]"
+    howpublished = "\\url{www.webelements.com/xenon/atom_sizes.html}",
   }
 """)
 
 doc = setup()
 doc.preamble.append(pl.Command('title', "Отчет по лаботраторной работе №1.3 \"Эффект Рамзауэра\""))
-doc.preamble.append(pl.Package('url'))
+doc.preamble.append(pl.Package('hyperref'))
+doc.preamble.append(pl.Package('float'))
 doc.preamble.append(pl.Package('biblatex',options=['sorting=none']))
 doc.preamble.append(pl.Command('addbibresource',arguments=["wiki.bib"]))
 
 doc.append(pl.Command('maketitle'))
 
 with doc.create(pl.Section("Цель работы")) as s:
-    doc.append("Найти размер электронной оболочки и глубину потенциальной ямы для атома ксенона.")
+    doc.append("Найти размер электронной оболочки атома ксенона.")
 
 atom_radius_tex = r"\frac{h \sqrt{5}}{\sqrt{32 m (E_2 - E_1)}}"
 def atom_radius_f(h=None, m=None, E_1=None, E_2=None):
@@ -109,7 +109,7 @@ with doc.create(pl.Section("Теоретические сведения")) as s:
     doc.append(pl.Math(data=[f'U_0={potential_gap_tex}'], escape=False))
 
 with doc.create(pl.Section("Экспериментальная установка")) as s:
-    with doc.create(pl.Figure(position='h!')) as fig:
+    with doc.create(pl.Figure(position=NoEscape('H'))) as fig:
         fig.add_image('sys.png')
         fig.add_caption('Тиратрон ТГ3-01/1.3Б')
     doc.append(NoEscape(r"""
@@ -152,10 +152,38 @@ with doc.create(pl.Section("Результаты измерений")) as s:
 
     with doc.create(pl.Subsection("Измерения в динамическом режиме")) as ss:
         A = 2 * pq.electron_volt
-        E_1_q = .5 * (pq.UncertainQuantity(1.5, '', .2) + pq.UncertainQuantity(1.3, '', .2)) * A
-        E_2_q = .5 * (pq.UncertainQuantity(3.5, '', .2) + pq.UncertainQuantity(4.2, '', .2)) * A
+        V_f_1 = 1.5
+        V_f_2 = 3.5
+        V_b_1 = 1.3
+        V_b_2 = 4.2
+        E_1_q = pq.UncertainQuantity(1.4, '', .2) * A
+        E_2_q = pq.UncertainQuantity((3.5 + 4.2) / 2, '', .7) * A
+
+        ss.append("Максимум и минимум фиксируются на экране осциллографа с ценой деления ")
+        ss.append(pl.Math(data=["A=", pl.Quantity(2 * pq.volt, options={
+            "round-mode": "figures",
+            "round-precision": 1,
+        })], inline=True, escape=False))
+        ss.append(":")
+        with ss.create(pl.Center()):
+            S = r"""S[
+                table-alignment-mode = none,
+                round-mode = figures,
+                round-precision = 2,
+            ]"""
+            with ss.create(pl.Tabular(f'c|{S}|{S}', width=3)) as table:
+                table.add_row((NoEscape(""), NoEscape(r'$V_{1} \text{, } \unit{\text{дел}}$'), NoEscape(r'$V_{2} \text{, } \unit{\text{дел}}$')))
+                table.add_hline()
+                table.add_row(r"Ход луча вперед", V_f_1, V_f_2)
+                table.add_row(r"Ход луча назад", V_b_1, V_b_2)
+
+        E_1_q = pq.UncertainQuantity((V_f_1 + V_b_1) / 2, '', abs(V_f_1 - V_b_1)) * A
+        E_2_q = pq.UncertainQuantity((V_f_2 + V_b_2) / 2, '', abs(V_f_2 - V_b_2)) * A
         U_0_q = 2.5 * pq.electron_volt
-        ss.append("Измеренные в динамическом режиме максимум и минимум равны:")
+        ss.append(NoEscape(r"""
+            Положение каждого экстремума оценим как средние от измеренного во время хода луча осциллографа
+            вперед и назад, а погрешность как разность:
+        """))
         ss.append(pl.Math(data=['E_1=', pl.Quantity(E_1_q, options=number_options)], escape=False))
         ss.append(pl.Math(data=['E_2=', pl.Quantity(E_2_q, options=number_options)], escape=False))
 
@@ -169,7 +197,7 @@ with doc.create(pl.Section("Результаты измерений")) as s:
             pq.angstrom
         )
         l = pl.Quantity(l_q, options=number_options)
-        ss.append(pl.Math(data=['l=', l], escape=False))
+        ss.append(pl.Math(data=[f'l={l_from_E_1_tex}=', l], escape=False))
         l_dyn_know_U_0 = l
 
         ss.append(NoEscape(r"И через $E_1$ и $E_2$:"))
@@ -178,8 +206,15 @@ with doc.create(pl.Section("Результаты измерений")) as s:
             pq.angstrom
         )
         l = pl.Quantity(l_q, options=number_options)
-        ss.append(pl.Math(data=['l=', l], escape=False))
+        ss.append(pl.Math(data=[f'l={atom_radius_tex}=', l], escape=False))
         l_dyn = l
+
+        """
+        ss.append(NoEscape(r"Глубина потенциальной ямы:"))
+        U_0_q = potential_gap_f(E_1 = E_1_q, E_2 = E_2_q)
+        U_0 = pl.Quantity(U_0_q, options=number_options)
+        ss.append(pl.Math(data=[f"U_0={potential_gap_tex}=", U_0], escape=False))
+        """
 
     with doc.create(pl.Subsection("Измерения в статическом режиме")) as ss:
         err_V_q = pq.Quantity(0.01, pq.volt)
@@ -261,6 +296,7 @@ with doc.create(pl.Section("Результаты измерений")) as s:
 
         data_V, data_I = data.transpose()
 
+        """
         def par_ext_err(p, V):
             a, b, _ = p
             x_ext = -b/2/a
@@ -285,16 +321,34 @@ with doc.create(pl.Section("Результаты измерений")) as s:
         Vmin, Vmin_err = par_ext_err(p, V)
         min_est_x = np.linspace(data_V[lo], data_V[hi - 1], 2 * (hi - lo))
         min_est_y = np.dot(np.column_stack((min_est_x * min_est_x, min_est_x, np.ones(min_est_x.shape))), p)
+        """
 
-        with ss.create(pl.Figure(position='htbp')) as plot:
+        I_0_q = 22.4
+        data_Cw = -np.log(data_I / I_0_q)
+        i = np.where(data_I == I_0_q)[0][0]
+        Vmax = data_V[i]
+        l = r = i
+        while abs(data_I[l] - data_I[i]) <= err_I_q:
+            l -= 1
+        while abs(data_I[r] - data_I[i]) <= err_I_q:
+            r += 1
+        Vmax_err = max(Vmax - data_V[l], data_V[r] - Vmax)
+
+        i = np.where(data_I == 9.67)[0][0]
+        Vmin = data_V[i]
+        l = r = i
+        while abs(data_I[l] - data_I[i]) <= err_I_q:
+            l -= 1
+        while abs(data_I[r] - data_I[i]) <= err_I_q:
+            r += 1
+        Vmin_err = max(Vmin - data_V[l], data_V[r] - Vmin)
+
+        with ss.create(pl.Figure(position=NoEscape('H'))) as plot:
             plt.figure(clear=True)
-            plt.plot(data_V, data_I, 'o', label="ВАХ тиратрона")
-            plt.plot(max_est_x, max_est_y, '-', label="Аппроксимация максимума")
-            plt.plot(min_est_x, min_est_y, '-', label="Аппроксимация минимума")
+            plt.plot(data_V, data_I, 'o')
             plt.xlabel(r"$V \text{, } \unit{V}$")
             plt.ylabel(r"$I \text{, } \unit{mV}$")
             plt.grid()
-            plt.legend()
             plot.add_plot()
             plot.add_caption(r"ВАХ тиратрона")
 
@@ -307,11 +361,19 @@ with doc.create(pl.Section("Результаты измерений")) as s:
             "round-precision": 3,
         })
 
-        ss.append(NoEscape("Найдем максимум, минимум, и ток на аноде по параболической аппроксимации:"))
+        ss.append(NoEscape("""
+        Найдем максимум и минимум.
+        Погрешность оценим как максимальное расстояние между экстремумом и точкой, чье значение
+        не отличается с учетом погрешности:
+        """))
         ss.append(pl.Math(data=["E_1=", E_1], escape=False))
         ss.append(pl.Math(data=["E_2=", E_2], escape=False))
+        ss.append(NoEscape(r"""
+        Примерное значение тока на аноде:
+        """))
         ss.append(pl.Math(data=[r"I_0 \approx", I_0], escape=False))
 
+        r"""
         ss.append(NoEscape("Для максимума и минимума учтем систематическую погрешность:"))
         E_1_q += pq.UncertainQuantity(0, pq.e * err_V_q.units, float(err_V_q))
         E_2_q += pq.UncertainQuantity(0, pq.e * err_V_q.units, float(err_V_q))
@@ -319,6 +381,7 @@ with doc.create(pl.Section("Результаты измерений")) as s:
         E_2 = pl.Quantity(E_2_q, options=number_options)
         ss.append(pl.Math(data=["E_1=", E_1], escape=False))
         ss.append(pl.Math(data=["E_2=", E_2], escape=False))
+        """
 
         ss.append(NoEscape("Теперь рассчитаем размер электронной оболочки атома $l$ и глубину потенциальной ямы $U_0$:"))
         l_q = atom_radius_f(h = pq.constants.h, m = pq.constants.electron_mass, E_1=E_1_q, E_2=E_2_q)
@@ -349,7 +412,7 @@ with doc.create(pl.Section("Результаты измерений")) as s:
         ss.append(pl.Math(data=['E_{n|n=3}=', E_n_3], escape=False))
 
         ss.append("Построим график вероятности рассеяния электрона:")
-        with ss.create(pl.Figure(position='htbp')) as plot:
+        with ss.create(pl.Figure(position='H')) as plot:
             plt.figure(clear=True)
             idx = np.where(data_I > 0)
             plt.plot(data_V[idx], data_Cw[idx], 'o')
@@ -362,26 +425,31 @@ with doc.create(pl.Section("Результаты измерений")) as s:
     with doc.create(pl.Subsection("Анализ результатов")) as ss:
         with ss.create(pl.Center()):
             with ss.create(pl.Tabular('c|c', width=2)) as table:
-                table.add_row(("", NoEscape(r'$l \text{, } \unit{\angstrom}$')))
+                table.add_row(("", NoEscape(r'$l \unit{}$')))
                 table.add_hline()
-                r_tab_q = pq.UncertainQuantity(1.40, pq.angstrom, 0.09)
+                r_tab_q = pq.Quantity(1.30, pq.angstrom)
                 l_tab_q = 2 * r_tab_q
                 l_tab = pl.Quantity(l_tab_q, options=number_options)
-                table.add_row((NoEscape(r"Удвоенный ковалентный радиус (\cite{" + cite_key + r"})"), l_tab))
+                table.add_row((NoEscape(r"Удвоенный ковалентный радиус \textsuperscript{\cite{" + cite_key + r"}}"), l_tab))
                 table.add_row((NoEscape(r"Динамический режим при известном $U_0$"), l_dyn_know_U_0))
                 table.add_row((NoEscape(r"Динамический режим"), l_dyn))
                 table.add_row((NoEscape(r"Статический режим"), l_stat))
 
         ss.append(NoEscape(r"""
-            Все полученные результаты сопоставимы с размером электронной
-            оболочки атома, если считать его равным удвоенному ковалентному радиусу.
+            Полученные результаты сопоставимы с табличным значением удвоенного ковалентного радиуса атома ксенона.
+            Рассчитанный при заданном значении $U_0$ размер атома совпадает с табличным значением.
+            Измерения в статическом режиме точнее измерений в динамическом режиме, поэтому далее будем считать,
+            что
         """))
+        ss.append(pl.Math(data=[f"l=", l], inline=True, escape=False))
+        ss.append(", однако это значение не совпадает с табличным, вероятно из-за выбранной модели.")
 
 with doc.create(pl.Section("Заключение")) as s:
     s.append(NoEscape(r"""
-        В ходе работы удалось пронаблюдать поведение электронов, которое предсказывалось квантовомеханической теорией.
-        Получилось оценить примерный размер атома ксенона и глубину его потенциальной ямы.
+        В ходе работы удалось оценить размер электронной оболочки атома ксенона
     """))
+    s.append(pl.Math(data=["l=", l_stat], escape=False, inline=True))
+    s.append(".")
 
 doc.append(pl.Command('printbibliography'))
 
